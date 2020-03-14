@@ -20,19 +20,21 @@ public class App {
     public static final String target_url = "https://n35ro2ic4d.execute-api.eu-central-1.amazonaws.com/prod/engine-rest/process-definition/key/invoice/xml";
 
     public static void main(String[] args) {
-        if (StringUtils.isEmpty(args[0]) || StringUtils.isEmpty(args[1])) {
+        if (args.length == 0 || StringUtils.isEmpty(args[0]) || StringUtils.isEmpty(args[1])) {
             System.exit(-1);
         }
         try {
             //fetch invoice xml
             HttpURLConnection httpURLConnection = fetchInvoiceXml();
             InputStream xmlStream = httpURLConnection.getInputStream();
-            httpURLConnection.disconnect();
 
             //parse xml
             BpmnModelInstance modelInstance = parse(xmlStream);
             ArrayList<FlowNodeRef> flowNodeRefCollection = (ArrayList<FlowNodeRef>)
                     modelInstance.getModelElementsByType(FlowNodeRef.class);
+
+            //close http connection
+            httpURLConnection.disconnect();
 
             //map to traversable data structure graph
             Diagram diagram = new Diagram();
@@ -60,7 +62,7 @@ public class App {
     }
 
     private static void addEdges(Diagram diagram) {
-        //TODO: add edges --> this is static not derived from this bpmn model instance
+        //TODO: add edges --> this is static not derived from this bpmn model instance as not able to derive siblings child elements
         diagram.addEdge("approveInvoice", "invoice_approved");
         diagram.addEdge("invoice_approved", "prepareBankTransfer");
         diagram.addEdge("invoice_approved", "reviewInvoice");
