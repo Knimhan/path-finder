@@ -14,7 +14,6 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 public class App {
@@ -28,17 +27,17 @@ public class App {
         }
         try {
             //fetch invoice xml
-            HttpURLConnection httpURLConnection = fetchInvoiceXml();
+            HttpURLConnection httpURLConnection = getConnection();
             InputStream xmlStream = httpURLConnection.getInputStream();
 
             //parse xml
             BpmnModelInstance modelInstance = parse(xmlStream);
             httpURLConnection.disconnect();
 
-            //add node and edge as well
-            Diagram diagram = getDiagram(modelInstance);
+            //convert to traversable data structure
+            Diagram diagram = map(modelInstance);
 
-            //find path
+            //find and print path
             findPathDepthFirst(diagram, args[0], args[1]);
 
         } catch (MalformedURLException e) {
@@ -56,7 +55,7 @@ public class App {
         }
     }
 
-    private static Diagram getDiagram(BpmnModelInstance modelInstance) {
+    private static Diagram map(BpmnModelInstance modelInstance) {
         Diagram diagram = new Diagram();
         Collection<SequenceFlow> sequenceFlows = modelInstance.getModelElementsByType(SequenceFlow.class);
         for (SequenceFlow se : sequenceFlows) {
@@ -75,12 +74,11 @@ public class App {
         Stack<Node> stack = new Stack<>();
         Node endNode = new Node(end);
         stack.push(new Node(start));
-
         while (!stack.isEmpty()) {
             Node node = stack.pop();
             if (node.equals(endNode)) {
                 visited.add(node);
-                for (Node print : visited) System.out.println(print.getName() + " ");
+                for (Node print : visited) System.out.println(print.getName());
                 System.exit(0);
             }
             if (!visited.contains(node)) {
@@ -113,7 +111,7 @@ public class App {
         return Bpmn.readModelFromFile(targetFile);
     }
 
-    private static HttpURLConnection fetchInvoiceXml() throws IOException {
+    private static HttpURLConnection getConnection() throws IOException {
         URL url = new URL(target_url);
         HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
         httpURLConnection.setRequestMethod("GET");
