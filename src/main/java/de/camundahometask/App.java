@@ -3,6 +3,7 @@ package de.camundahometask;
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.impl.instance.FlowNodeRef;
+import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -13,11 +14,13 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class App {
 
     public static final String target_url = "https://n35ro2ic4d.execute-api.eu-central-1.amazonaws.com/prod/engine-rest/process-definition/key/invoice/xml";
+    public static final String source_url = "src/main/resources/invoice.xml";
 
     public static void main(String[] args) {
         if (args.length == 0 || StringUtils.isEmpty(args[0]) || StringUtils.isEmpty(args[1])) {
@@ -30,21 +33,13 @@ public class App {
 
             //parse xml
             BpmnModelInstance modelInstance = parse(xmlStream);
-            ArrayList<FlowNodeRef> flowNodeRefCollection = (ArrayList<FlowNodeRef>)
-                    modelInstance.getModelElementsByType(FlowNodeRef.class);
-
-            //close http connection
             httpURLConnection.disconnect();
 
-            //map to traversable data structure graph
-            Diagram diagram = new Diagram();
-            for (Node node : map(flowNodeRefCollection)) {
-                diagram.addNode(node);
-            }
-            addEdges(diagram);
+            //add node and edge as well
+            Diagram diagram = getDiagram(modelInstance);
 
-            //find and print path from start to end node
-            findPathBreadthFirst(diagram, args[0], args[1]); //TODO: which one to use? depth first or breadth first
+            //find path
+            findPathDepthFirst(diagram, args[0], args[1]);
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -61,19 +56,19 @@ public class App {
         }
     }
 
-    private static void addEdges(Diagram diagram) {
-        //TODO: add edges --> this is static not derived from this bpmn model instance as not able to derive siblings child elements
-        diagram.addEdge("approveInvoice", "invoice_approved");
-        diagram.addEdge("invoice_approved", "prepareBankTransfer");
-        diagram.addEdge("invoice_approved", "reviewInvoice");
-        diagram.addEdge("reviewSuccessful_gw", "invoiceNotProcessed");
-        diagram.addEdge("reviewSuccessful_gw", "approveInvoice");
-        diagram.addEdge("assignApprover", "approveInvoice");
-        diagram.addEdge("StartEvent_1", "assignApprover");
-        diagram.addEdge("reviewInvoice", "reviewSuccessful_gw");
-        diagram.addEdge("prepareBankTransfer", "ServiceTask_1");
-        diagram.addEdge("ServiceTask_1", "invoiceProcessed");
+    private static Diagram getDiagram(BpmnModelInstance modelInstance) {
+        Diagram diagram = new Diagram();
+        Collection<SequenceFlow> sequenceFlows = modelInstance.getModelElementsByType(SequenceFlow.class);
+        for (SequenceFlow se : sequenceFlows) {
+            Node fromNode = new Node(se.getSource().getId());
+            Node toNode = new Node(se.getTarget().getId());
+            diagram.addNode(fromNode);
+            diagram.addNode(toNode);
+            diagram.addEdge(fromNode, toNode);
+        }
+        return diagram;
     }
+
 
     private static void findPathDepthFirst(Diagram diagram, String start, String end) {
         Set<Node> visited = new LinkedHashSet<>();
@@ -85,9 +80,7 @@ public class App {
             Node node = stack.pop();
             if (node.equals(endNode)) {
                 visited.add(node);
-                for (Node print : visited) {
-                    System.out.println(print.getName() + " ");
-                }
+                for (Node print : visited) System.out.println(print.getName() + " ");
                 System.exit(0);
             }
             if (!visited.contains(node)) {
@@ -97,33 +90,6 @@ public class App {
                 }
             }
         }
-        System.exit(-1);
-    }
-
-
-    private static void findPathBreadthFirst(Diagram diagram, String start, String end) {
-        Set<Node> visited = new LinkedHashSet<>();
-        Queue<Node> queue = new LinkedList<>();
-        Node endNode = new Node(end);
-        queue.add(new Node(start));
-
-        while (!queue.isEmpty()) {
-            Node node = queue.remove();
-            if (node.equals(endNode)) {
-                visited.add(node);
-                for (Node print : visited) {
-                    System.out.println(print.getName() + " ");
-                }
-                System.exit(0);
-            }
-            if (!visited.contains(node)) {
-                visited.add(node);
-                for (Node adjacentNode : diagram.getAdjacentNodes(node)) {
-                    queue.add(adjacentNode);
-                }
-            }
-        }
-        //path not found
         System.exit(-1);
     }
 
@@ -140,10 +106,10 @@ public class App {
         JSONObject jsonObject = (JSONObject) parser.parse(
                 new BufferedReader(new InputStreamReader((xmlStream))));
         String xml = (String) jsonObject.get("bpmn20Xml");
-
-        File targetFile = new File("src/main/resources/invoice.xml");
+        File targetFile = new File(source_url);
         OutputStream outStream = new FileOutputStream(targetFile);
         outStream.write(xml.getBytes());
+        outStream.close();
         return Bpmn.readModelFromFile(targetFile);
     }
 

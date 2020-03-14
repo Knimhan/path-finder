@@ -11,13 +11,18 @@ public class Diagram {
         adjacentNodes = new HashMap<>();
     }
 
-    public void addEdge(String fromNode, String toNode) {
-        adjacentNodes.get(new Node(fromNode)).add(new Node(toNode));
+    public Map<Node, ArrayList<Node>> getAdjacentNodes() {
+        return adjacentNodes;
+    }
+
+    public void addEdge(Node fromNode, Node toNode) {
+        adjacentNodes.get(fromNode).add(toNode);
     }
 
     public void addNode(Node node) {
         adjacentNodes.putIfAbsent(node, new ArrayList<>());
     }
+
 
     public ArrayList<Node> getAdjacentNodes(Node node) {
         return adjacentNodes.getOrDefault(node, new ArrayList<>());
