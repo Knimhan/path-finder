@@ -68,7 +68,6 @@ public class App {
         return diagram;
     }
 
-
     private static void findPathDepthFirst(Diagram diagram, String start, String end) {
         Set<Node> visited = new LinkedHashSet<>();
         Stack<Node> stack = new Stack<>();

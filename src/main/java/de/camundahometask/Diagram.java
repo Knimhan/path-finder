@@ -23,9 +23,7 @@ public class Diagram {
         adjacentNodes.putIfAbsent(node, new ArrayList<>());
     }
 
-
     public ArrayList<Node> getAdjacentNodes(Node node) {
         return adjacentNodes.getOrDefault(node, new ArrayList<>());
     }
-
 }
