@@ -11,10 +11,6 @@ public class Diagram {
         adjacentNodes = new HashMap<>();
     }
 
-    public Map<Node, ArrayList<Node>> getAdjacentNodes() {
-        return adjacentNodes;
-    }
-
     public void addEdge(Node fromNode, Node toNode) {
         adjacentNodes.get(fromNode).add(toNode);
     }
